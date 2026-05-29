@@ -20,8 +20,9 @@ export default function Layout({ children, titulo }) {
           alignItems: 'center',
           gap: '12px',
         }}>
+          {/* Ícone + Texto */}
           <span style={{ fontSize: '26px' }}>📋</span>
-          <div>
+          <div style={{ flex: 1 }}>
             <h1 style={{ color: '#fff', fontSize: '20px', fontWeight: 700, letterSpacing: '0.3px' }}>
               Atividades
             </h1>
@@ -29,6 +30,18 @@ export default function Layout({ children, titulo }) {
               <p style={{ color: '#90caf9', fontSize: '13px', marginTop: '2px' }}>{titulo}</p>
             )}
           </div>
+
+          {/* Logo da empresa */}
+          <img
+            src="/logo.png"
+            alt="Logo"
+            style={{
+              height: '42px',
+              width: 'auto',
+              filter: 'brightness(0) invert(1)',
+              opacity: 0.9,
+            }}
+          />
         </div>
 
         <div style={{
