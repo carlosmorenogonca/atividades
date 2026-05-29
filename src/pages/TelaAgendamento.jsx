@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import confetti from 'canvas-confetti'
 import { supabase } from '../lib/supabase.js'
 import Layout from '../components/Layout.jsx'
 import Botao from '../components/Botao.jsx'
@@ -14,6 +15,31 @@ function formatarHora(hrStr) {
   return hrStr.substring(0, 5)
 }
 
+function dispararConfetes() {
+  const duracao = 2500
+  const fim = Date.now() + duracao
+  const cores = ['#1565c0', '#42a5f5', '#90caf9', '#ffffff', '#bbdefb']
+
+  const frame = () => {
+    confetti({
+      particleCount: 6,
+      angle: 60,
+      spread: 55,
+      origin: { x: 0 },
+      colors: cores,
+    })
+    confetti({
+      particleCount: 6,
+      angle: 120,
+      spread: 55,
+      origin: { x: 1 },
+      colors: cores,
+    })
+    if (Date.now() < fim) requestAnimationFrame(frame)
+  }
+  frame()
+}
+
 export default function TelaAgendamento({ funcionario, onConsulta, onLogout }) {
   const [tarefas, setTarefas] = useState([])
   const [tarefaSelecionada, setTarefaSelecionada] = useState('')
@@ -23,6 +49,7 @@ export default function TelaAgendamento({ funcionario, onConsulta, onLogout }) {
   const [carregandoHorarios, setCarregandoHorarios] = useState(false)
   const [confirmando, setConfirmando] = useState(false)
   const [sucesso, setSucesso] = useState(false)
+  const [tarefaConfirmada, setTarefaConfirmada] = useState(null)
   const [erro, setErro] = useState('')
 
   useEffect(() => {
@@ -52,7 +79,6 @@ export default function TelaAgendamento({ funcionario, onConsulta, onLogout }) {
 
     const tarefa = tarefas.find(t => t.cd_tarefa === cdTarefa)
 
-    // Verifica se funcionário já tem tarefa neste dia
     const { data: jaAgendado } = await supabase
       .from('tarefa_fun')
       .select('cd_tarefa, tarefa:cd_tarefa(dt_tarefa)')
@@ -68,7 +94,6 @@ export default function TelaAgendamento({ funcionario, onConsulta, onLogout }) {
       return
     }
 
-    // Busca horários com vagas disponíveis
     const { data: horariosData } = await supabase
       .from('hora_tarefa')
       .select('hr_tarefa, qt_disponivel, qt_vaga')
@@ -85,7 +110,6 @@ export default function TelaAgendamento({ funcionario, onConsulta, onLogout }) {
     setConfirmando(true)
     setErro('')
 
-    // Insere na tarefa_fun
     const { error: errInsert } = await supabase
       .from('tarefa_fun')
       .insert({ cd_fun: funcionario.cd_fun, cd_tarefa: tarefaSelecionada, horario: horarioSelecionado })
@@ -96,7 +120,6 @@ export default function TelaAgendamento({ funcionario, onConsulta, onLogout }) {
       return
     }
 
-    // Incrementa qt_vaga
     const horario = horarios.find(h => h.hr_tarefa === horarioSelecionado)
     await supabase
       .from('hora_tarefa')
@@ -104,11 +127,15 @@ export default function TelaAgendamento({ funcionario, onConsulta, onLogout }) {
       .eq('cd_tarefa', tarefaSelecionada)
       .eq('hr_tarefa', horarioSelecionado)
 
+    const tarefa = tarefas.find(t => t.cd_tarefa === tarefaSelecionada)
+    setTarefaConfirmada({ tarefa, horario: horarioSelecionado })
     setSucesso(true)
     setConfirmando(false)
     setTarefaSelecionada('')
     setHorarioSelecionado('')
     setHorarios([])
+
+    dispararConfetes()
   }
 
   const inputStyle = {
@@ -158,18 +185,41 @@ export default function TelaAgendamento({ funcionario, onConsulta, onLogout }) {
         </button>
       </div>
 
-      {sucesso && (
+      {/* Banner de sucesso animado */}
+      {sucesso && tarefaConfirmada && (
         <div style={{
-          background: '#e8f5e9',
-          border: '1px solid #a5d6a7',
-          borderRadius: '8px',
-          padding: '14px 18px',
+          background: 'linear-gradient(135deg, #1565c0 0%, #1976d2 100%)',
+          borderRadius: '12px',
+          padding: '24px 20px',
           marginBottom: '24px',
-          color: '#2e7d32',
-          fontWeight: 600,
-          fontSize: '15px',
+          textAlign: 'center',
+          animation: 'fadeInUp 0.4s ease',
         }}>
-          ✓ Convocação confirmada com sucesso!
+          <div style={{ fontSize: '48px', marginBottom: '8px' }}>🎉</div>
+          <p style={{ color: '#fff', fontWeight: 700, fontSize: '18px', marginBottom: '6px' }}>
+            Convocação confirmada!
+          </p>
+          <p style={{ color: '#bbdefb', fontSize: '14px', marginBottom: '4px' }}>
+            {tarefaConfirmada.tarefa.nm_tarefa}
+          </p>
+          <p style={{ color: '#90caf9', fontSize: '13px' }}>
+            📅 {formatarData(tarefaConfirmada.tarefa.dt_tarefa)} às {formatarHora(tarefaConfirmada.horario)}
+          </p>
+          <button
+            onClick={() => setSucesso(false)}
+            style={{
+              marginTop: '16px',
+              background: 'rgba(255,255,255,0.2)',
+              border: '1px solid rgba(255,255,255,0.4)',
+              color: '#fff',
+              borderRadius: '6px',
+              padding: '6px 16px',
+              fontSize: '13px',
+              cursor: 'pointer',
+            }}
+          >
+            Fechar
+          </button>
         </div>
       )}
 
@@ -278,6 +328,13 @@ export default function TelaAgendamento({ funcionario, onConsulta, onLogout }) {
           </Botao>
         )}
       </div>
+
+      <style>{`
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(16px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </Layout>
   )
 }
